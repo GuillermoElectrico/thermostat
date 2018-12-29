@@ -5,19 +5,20 @@
         "freezingMeasured": 0.01
     },
     "logging": {
-        "channel": "file",
-        "level": "state"
+        "channel": "none",
+        "level": "error"
     },
     "mqtt": {
         "clientID": "thermostat",
         "enabled": 0,
         "port": 1883,
         "pubPrefix": "mymqtt",
-        "server": "localhost"
+        "server": "localhost",
+        "SusbcribeTopic": "thermostat/sensor/remote1"
     },
     "pir": {
         "pirCheckInterval": 0.5,
-        "pirEnabled": 1,
+        "pirEnabled": 0,
         "pirIgnoreFrom": "00:00",
         "pirIgnoreTo": "00:00",
         "pirPin": 5
@@ -26,11 +27,12 @@
         "tempScale": "metric"
     },
     "thermostat": {
+        "sensor": "local",
         "coolPin": 18,
         "fanPin": 25,
         "heatPin": 23,
         "maxTemp": 30.0,
-        "minTemp": 15.0,
+        "minTemp": 5.0,
         "minUIEnabled": 1,
         "minUITimeout": 60,
         "tempCheckInterval": 3,
@@ -38,9 +40,9 @@
         "tempStep": 0.5
     },
     "weather": {
-        "appkey": "your openweathermap.org appkey",
+        "appkey": "ad565e31f1c491aab037383788521dd9",
         "forecastRefreshInterval": 60,
-        "location": "Barrie,ca",
+        "location": "Valladolid,ES",
         "weatherExceptionInterval": 5,
         "weatherRefreshInterval": 10,
 		"URLtimeout": 5
