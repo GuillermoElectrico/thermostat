@@ -203,7 +203,7 @@ MSG_SUBTYPE_TEXT					= "text"
 #                                                                            #
 ##############################################################################
 
-THERMOSTAT_VERSION = "1.9.9"
+THERMOSTAT_VERSION = "2.0.1"
 
 # Debug settings
 
@@ -225,6 +225,12 @@ state 	 = JsonStore( "thermostat_state.json" )
 
 
 # MQTT settings/setup
+
+############
+def on_message(client, userdata, message):
+    if mqttEnabled:
+        currentTemp = int(str(message.payload.decode("utf-8")))
+########################################
 
 def mqtt_on_connect( client, userdata, flags, rc ):
 	global mqttReconnect
@@ -256,7 +262,8 @@ if mqttAvailable:
 	mqttClientID     	= 'thermostat' 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "clientID" ]
 	mqttServer     		= 'localhost' 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "server" ]
 	mqttPort       		= 1883 			if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "port" ]
-	mqttPubPrefix     	= "thermostat" 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
+	mqttPubPrefix     	= "mymqtt" 	    if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
+	mqttSusbcribeTopic     	= str( mqttPubPrefix + "/" + mqttClientID + "/sensor/remote1" ) 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
 
 	mqttSub_version		= str( mqttPubPrefix + "/" + mqttClientID + "/command/version" )
 	mqttSub_restart		= str( mqttPubPrefix + "/" + mqttClientID + "/command/restart" )
@@ -361,6 +368,7 @@ if mqttEnabled:
 		time.sleep( 1 )
 
 	mqttc.connect( mqttServer, mqttPort )
+	mqttc.subscribe( mqttSusbcribeTopic )
 	mqttc.loop_start()
 
 # Send presentations for Node
@@ -875,35 +883,34 @@ def control_callback( control ):
 
 # Check the current sensor temperature
 
-#### Aqui hay que meter sensor remoto
-
 def check_sensor_temp( dt ):
 	with thermostatLock:
 		global currentTemp, priorCorrected
 		global tempSensor
 		
-		if tempSensor is not None:
-			rawTemp = tempSensor.get_temperature( sensorUnits )
-			correctedTemp = ( ( ( rawTemp - freezingMeasured ) * referenceRange ) / measuredRange ) + freezingPoint
-			currentTemp = round( correctedTemp, 1 )
-			log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/raw", str( rawTemp ) )
-			log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/corrected", str( correctedTemp ) )
+        if not mqttEnabled:
+		    if tempSensor is not None:
+			    rawTemp = tempSensor.get_temperature( sensorUnits )
+			    correctedTemp = ( ( ( rawTemp - freezingMeasured ) * referenceRange ) / measuredRange ) + freezingPoint
+			    currentTemp = round( correctedTemp, 1 )
+			    log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/raw", str( rawTemp ) )
+			    log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/corrected", str( correctedTemp ) )
 
-			if abs( priorCorrected - correctedTemp ) >= TEMP_TOLERANCE:
-				log( LOG_LEVEL_STATE, CHILD_DEVICE_TEMP, MSG_SUBTYPE_TEMPERATURE, str( currentTemp ) )	
-				priorCorrected = correctedTemp	
+			    if abs( priorCorrected - correctedTemp ) >= TEMP_TOLERANCE:
+				    log( LOG_LEVEL_STATE, CHILD_DEVICE_TEMP, MSG_SUBTYPE_TEMPERATURE, str( currentTemp ) )	
+				    priorCorrected = correctedTemp	
 
-		currentLabel.text = "[b]" + str( currentTemp ) + scaleUnits + "[/b]"
-		altCurLabel.text  = currentLabel.text
+        currentLabel.text = "[b]" + str( currentTemp ) + scaleUnits + "[/b]"
+        altCurLabel.text  = currentLabel.text
 
-		dateLabel.text      = "[b]" + time.strftime("%a %b %d, %Y") + "[/b]"
+        dateLabel.text      = "[b]" + time.strftime("%a %b %d, %Y") + "[/b]"
 
-		timeStr		 = time.strftime("%I:%M %p").lower()
+        timeStr		 = time.strftime("%I:%M %p").lower()
 
-		timeLabel.text      = ( "[b]" + ( timeStr if timeStr[0:1] != "0" else timeStr[1:] ) + "[/b]" ).lower()
-		altTimeLabel.text  	= timeLabel.text
-
-		change_system_settings()
+        timeLabel.text      = ( "[b]" + ( timeStr if timeStr[0:1] != "0" else timeStr[1:] ) + "[/b]" ).lower()
+        altTimeLabel.text  	= timeLabel.text
+ 
+        change_system_settings()
 
 
 # This is called when the desired temp slider is updated:

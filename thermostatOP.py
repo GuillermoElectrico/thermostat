@@ -266,7 +266,7 @@ if mqttAvailable:
 	mqttClientID     	= 'thermostat' 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "clientID" ]
 	mqttServer     		= 'localhost' 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "server" ]
 	mqttPort       		= 1883 			if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "port" ]
-	mqttPubPrefix     	= "mymqtt" 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
+	mqttPubPrefix     	= "mymqtt" 	    if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
 	mqttSusbcribeTopic     	= str( mqttPubPrefix + "/" + mqttClientID + "/sensor/remote1" ) 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
 
 	mqttSub_version		= str( mqttPubPrefix + "/" + mqttClientID + "/command/version" )
@@ -894,7 +894,7 @@ def control_callback( control ):
 			reloadSchedule()						
 		
 
-# Check the current sensor temperature "aqui"
+# Check the current sensor temperature
 
 def check_sensor_temp( dt ):
 	with thermostatLock:
