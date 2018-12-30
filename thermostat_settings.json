@@ -14,7 +14,7 @@
         "port": 1883,
         "pubPrefix": "mymqtt",
         "server": "localhost",
-        "SusbcribeTopic": "thermostat/sensor/remote1"
+        "SusbcribeTopic": "mymqtt/thermostat/sensor/remote1"
     },
     "pir": {
         "pirCheckInterval": 0.5,
@@ -27,7 +27,6 @@
         "tempScale": "metric"
     },
     "thermostat": {
-        "sensor": "local",
         "coolPin": 18,
         "fanPin": 25,
         "heatPin": 23,
