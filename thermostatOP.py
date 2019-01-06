@@ -78,11 +78,15 @@ import schedule
 #       GPIO & Simulation Imports                                            #
 #                                                                            #
 ##############################################################################
-
+"""
 try:
 	import RPi.GPIO as GPIO
 except ImportError:
 	import FakeRPi.GPIO as GPIO
+"""
+
+from pyA20.gpio import gpio
+from pyA20.gpio import port
 
 
 ##############################################################################
@@ -262,7 +266,7 @@ if mqttAvailable:
 	mqttClientID     	= 'thermostat' 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "clientID" ]
 	mqttServer     		= 'localhost' 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "server" ]
 	mqttPort       		= 1883 			if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "port" ]
-	mqttPubPrefix     	= "mymqtt" 	    if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
+	mqttPubPrefix     	= "mymqtt" 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
 	mqttSusbcribeTopic     	= str( mqttPubPrefix + "/" + mqttClientID + "/sensor/remote1" ) 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
 
 	mqttSub_version		= str( mqttPubPrefix + "/" + mqttClientID + "/command/version" )
@@ -462,7 +466,8 @@ except:
 # PIR (Motion Sensor) setup:
 
 pirEnabled 			= 0 if not( settings.exists( "pir" ) ) else settings.get( "pir" )[ "pirEnabled" ]
-pirPin  			= 5 if not( settings.exists( "pir" ) ) else settings.get( "pir" )[ "pirPin" ]
+pirPin  			= port.PA7 
+#if not( settings.exists( "pir" ) ) else settings.get( "pir" )[ "pirPin" ]
 
 pirCheckInterval 	= 0.5 if not( settings.exists( "pir" ) ) else settings.get( "pir" )[ "pirCheckInterval" ]
 
@@ -479,20 +484,25 @@ log( LOG_LEVEL_INFO, CHILD_DEVICE_NODE, MSG_SUBTYPE_CUSTOM + "/settings/pir/igno
 
 # GPIO Pin setup and utility routines:
 
-coolPin		 		= 18 if not( settings.exists( "thermostat" ) ) else settings.get( "thermostat" )[ "coolPin" ]
-heatPin 			= 23 if not( settings.exists( "thermostat" ) ) else settings.get( "thermostat" )[ "heatPin" ]
-fanPin  			= 25 if not( settings.exists( "thermostat" ) ) else settings.get( "thermostat" )[ "fanPin" ]
+coolPin		 		= port.PA0 
+#if not( settings.exists( "thermostat" ) ) else settings.get( "thermostat" )[ "coolPin" ]
+heatPin 			= port.PA1 
+#if not( settings.exists( "thermostat" ) ) else settings.get( "thermostat" )[ "heatPin" ]
+fanPin  			= port.PA3 
+#if not( settings.exists( "thermostat" ) ) else settings.get( "thermostat" )[ "fanPin" ]
 
-GPIO.setmode( GPIO.BCM )
-GPIO.setup( coolPin, GPIO.OUT )
-GPIO.output( coolPin, GPIO.LOW )
-GPIO.setup( heatPin, GPIO.OUT )
-GPIO.output( heatPin, GPIO.LOW )
-GPIO.setup( fanPin, GPIO.OUT )
-GPIO.output( fanPin, GPIO.LOW )
+
+gpio.init()
+#GPIO.setmode( GPIO.BCM )
+gpio.setcfg( coolPin, gpio.OUTPUT )
+gpio.output( coolPin, gpio.HIGH )
+gpio.setcfg( heatPin, gpio.OUTPUT )
+gpio.output( heatPin, gpio.HIGH )
+gpio.setcfg( fanPin, gpio.OUTPUT )
+gpio.output( fanPin, gpio.HIGH )
 
 if pirEnabled:
-	GPIO.setup( pirPin, GPIO.IN )
+	gpio.setcfg( pirPin, gpio.INPUT )
 
 CHILD_DEVICE_HEAT					= "heat"
 CHILD_DEVICE_COOL					= "cool"
@@ -575,9 +585,9 @@ def get_status_string():
 			sched = "Cool"
 	
 		return "[b]System:[/b]\n  " + \
-			   "Heat:     " + ( "[color=00ff00][b]On[/b][/color]" if GPIO.input( heatPin ) else "Off" ) + "\n  " + \
-		       "Cool:      " + ( "[color=00ff00][b]On[/b][/color]" if GPIO.input( coolPin ) else "Off" ) + "\n  " + \
-		       "Fan:       " + ( "[color=00ff00][b]On[/b][/color]" if GPIO.input( fanPin ) else "Auto" ) + "\n  " + \
+			   "Heat:     " + ( "[color=00ff00][b]On[/b][/color]" if not gpio.input( heatPin ) else "Off" ) + "\n  " + \
+		       "Cool:      " + ( "[color=00ff00][b]On[/b][/color]" if not gpio.input( coolPin ) else "Off" ) + "\n  " + \
+		       "Fan:       " + ( "[color=00ff00][b]On[/b][/color]" if not gpio.input( fanPin ) else "Auto" ) + "\n  " + \
 			   "Sched:   " + sched
 
 
@@ -779,7 +789,10 @@ def getVersion():
 
 def restart():
 	log( LOG_LEVEL_STATE, CHILD_DEVICE_NODE, MSG_SUBTYPE_CUSTOM + "/restart", "Thermostat restarting...", single=True ) 
-	GPIO.cleanup()
+#	gpio.cleanup()
+	gpio.output( heatPin, gpio.HIGH )
+	gpio.output( fanPin, gpio.HIGH )
+	gpio.output( coolPin, gpio.HIGH )
 
 	if logFile is not None:
 		logFile.flush()
@@ -813,41 +826,41 @@ def setLogLevel( msg ):
 
 def change_system_settings():
 	with thermostatLock:
-		hpin_start = str( GPIO.input( heatPin ) )
-		cpin_start = str( GPIO.input( coolPin ) )
-		fpin_start = str( GPIO.input( fanPin ) )
+		hpin_start = str( gpio.input( heatPin ) )
+		cpin_start = str( gpio.input( coolPin ) )
+		fpin_start = str( gpio.input( fanPin ) )
 
 		if heatControl.state == "down":
-			GPIO.output( coolPin, GPIO.LOW )
+			gpio.output( coolPin, gpio.HIGH )
 
 			if setTemp >= currentTemp + tempHysteresis:
-				GPIO.output( heatPin, GPIO.HIGH )
-				GPIO.output( fanPin, GPIO.HIGH )	
+				gpio.output( heatPin, gpio.LOW )
+				gpio.output( fanPin, gpio.LOW )	
 			elif setTemp <= currentTemp:
-				GPIO.output( heatPin, GPIO.LOW )
-				if fanControl.state != "down" and not GPIO.input( coolPin ):
-					GPIO.output( fanPin, GPIO.LOW )			
+				gpio.output( heatPin, gpio.HIGH )
+				if fanControl.state != "down" and gpio.input( coolPin ):
+					gpio.output( fanPin, gpio.HIGH )			
 		else:
-			GPIO.output( heatPin, GPIO.LOW )
+			gpio.output( heatPin, gpio.HIGH )
 
 			if coolControl.state == "down":
 				if setTemp <= currentTemp - tempHysteresis:
-					GPIO.output( coolPin, GPIO.HIGH )
-					GPIO.output( fanPin, GPIO.HIGH )
+					gpio.output( coolPin, gpio.LOW )
+					gpio.output( fanPin, gpio.LOW )
 				elif setTemp >= currentTemp:
-					GPIO.output( coolPin, GPIO.LOW )
-					if fanControl.state != "down" and not GPIO.input( heatPin ):
-						GPIO.output( fanPin, GPIO.LOW )					
+					gpio.output( coolPin, gpio.HIGH )
+					if fanControl.state != "down" and gpio.input( heatPin ):
+						gpio.output( fanPin, gpio.HIGH )					
 			else:
-				GPIO.output( coolPin, GPIO.LOW )
-				if fanControl.state != "down" and not GPIO.input( heatPin ):
-					GPIO.output( fanPin, GPIO.LOW )
+				gpio.output( coolPin, gpio.HIGH )
+				if fanControl.state != "down" and gpio.input( heatPin ):
+					gpio.output( fanPin, gpio.HIGH )
 
 		if fanControl.state == "down":
-			GPIO.output( fanPin, GPIO.HIGH )
+			gpio.output( fanPin, gpio.LOW )
 		else:
-			if not GPIO.input( heatPin ) and not GPIO.input( coolPin ):
-				GPIO.output( fanPin, GPIO.LOW )
+			if gpio.input( heatPin ) and gpio.input( coolPin ):
+				gpio.output( fanPin, gpio.HIGH )
 
 		# save the thermostat state in case of restart
 		state.put( "state",	setTemp=setTemp, 
@@ -856,12 +869,12 @@ def change_system_settings():
 
 		statusLabel.text = get_status_string()
 
-		if hpin_start != str( GPIO.input( heatPin ) ):
-			log( LOG_LEVEL_STATE, CHILD_DEVICE_HEAT, MSG_SUBTYPE_BINARY_STATUS, "1" if GPIO.input( heatPin ) else "0" )
-		if cpin_start != str( GPIO.input( coolPin ) ):
-			log( LOG_LEVEL_STATE, CHILD_DEVICE_COOL, MSG_SUBTYPE_BINARY_STATUS, "1" if GPIO.input( coolPin ) else "0" )
-		if fpin_start != str( GPIO.input( fanPin ) ):
-			log( LOG_LEVEL_STATE, CHILD_DEVICE_FAN, MSG_SUBTYPE_BINARY_STATUS, "1" if GPIO.input( fanPin ) else "0" )
+		if hpin_start != str( gpio.input( heatPin ) ):
+			log( LOG_LEVEL_STATE, CHILD_DEVICE_HEAT, MSG_SUBTYPE_BINARY_STATUS, "1" if not gpio.input( heatPin ) else "0" )
+		if cpin_start != str( gpio.input( coolPin ) ):
+			log( LOG_LEVEL_STATE, CHILD_DEVICE_COOL, MSG_SUBTYPE_BINARY_STATUS, "1" if not gpio.input( coolPin ) else "0" )
+		if fpin_start != str( gpio.input( fanPin ) ):
+			log( LOG_LEVEL_STATE, CHILD_DEVICE_FAN, MSG_SUBTYPE_BINARY_STATUS, "1" if not gpio.input( fanPin ) else "0" )
 
 
 # This callback will be bound to the touch screen UI buttons:
@@ -881,25 +894,29 @@ def control_callback( control ):
 			reloadSchedule()						
 		
 
-# Check the current sensor temperature
+# Check the current sensor temperature "aqui"
 
 def check_sensor_temp( dt ):
-	with thermostatLock:
-		global currentTemp, priorCorrected
-		global tempSensor
+    with thermostatLock:
+        global currentTemp
+        global priorCorrected
+        global tempSensor
 		
         if not mqttEnabled:
-		    if tempSensor is not None:
-			    rawTemp = tempSensor.get_temperature( sensorUnits )
-			    correctedTemp = ( ( ( rawTemp - freezingMeasured ) * referenceRange ) / measuredRange ) + freezingPoint
-			    currentTemp = round( correctedTemp, 1 )
-			    log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/raw", str( rawTemp ) )
-			    log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/corrected", str( correctedTemp ) )
+            if tempSensor is not None:
+                try:
+			        rawTemp = tempSensor.get_temperature( sensorUnits )
+			        correctedTemp = ( ( ( rawTemp - freezingMeasured ) * referenceRange ) / measuredRange ) + freezingPoint
+			        currentTemp = round( correctedTemp, 1 )
+			        log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/raw", str( rawTemp ) )
+			        log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/corrected", str( correctedTemp ) )
 
-			    if abs( priorCorrected - correctedTemp ) >= TEMP_TOLERANCE:
-				    log( LOG_LEVEL_STATE, CHILD_DEVICE_TEMP, MSG_SUBTYPE_TEMPERATURE, str( currentTemp ) )	
-				    priorCorrected = correctedTemp	
-
+			        if abs( priorCorrected - correctedTemp ) >= TEMP_TOLERANCE:
+				        log( LOG_LEVEL_STATE, CHILD_DEVICE_TEMP, MSG_SUBTYPE_TEMPERATURE, str( currentTemp ) )	
+				        priorCorrected = correctedTemp	
+                except:
+                    currentTemp = currentTemp
+						
         currentLabel.text = "[b]" + str( currentTemp ) + scaleUnits + "[/b]"
         altCurLabel.text  = currentLabel.text
 
@@ -931,7 +948,7 @@ def check_pir( pin ):
 	global minUITimer
 
 	with thermostatLock:
-		if GPIO.input( pirPin ): 
+		if gpio.input( pirPin ): 
 			log( LOG_LEVEL_INFO, CHILD_DEVICE_PIR, MSG_SUBTYPE_TRIPPED, "1" )
 
 			if minUITimer != None:
@@ -1425,7 +1442,10 @@ if __name__ == '__main__':
 		main()
 	finally:
 		log( LOG_LEVEL_STATE, CHILD_DEVICE_NODE, MSG_SUBTYPE_CUSTOM + "/shutdown", "Thermostat Shutting Down..." )
-		GPIO.cleanup()
+#		gpio.cleanup()
+		gpio.output( heatPin, gpio.HIGH )
+		gpio.output( fanPin, gpio.HIGH )
+		gpio.output( coolPin, gpio.HIGH )
 
 		if logFile is not None:
 			logFile.flush()
