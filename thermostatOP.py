@@ -266,7 +266,7 @@ if mqttAvailable:
 	mqttClientID     	= 'thermostat' 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "clientID" ]
 	mqttServer     		= 'localhost' 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "server" ]
 	mqttPort       		= 1883 			if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "port" ]
-	mqttPubPrefix     	= "mymqtt" 	    if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
+	mqttPubPrefix     	= "mymqtt" 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
 	mqttSusbcribeTopic     	= str( mqttPubPrefix + "/" + mqttClientID + "/sensor/remote1" ) 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
 
 	mqttSub_version		= str( mqttPubPrefix + "/" + mqttClientID + "/command/version" )
@@ -894,25 +894,29 @@ def control_callback( control ):
 			reloadSchedule()						
 		
 
-# Check the current sensor temperature
+# Check the current sensor temperature "aqui"
 
 def check_sensor_temp( dt ):
-	with thermostatLock:
-		global currentTemp, priorCorrected
-		global tempSensor
+    with thermostatLock:
+        global currentTemp
+        global priorCorrected
+        global tempSensor
 		
         if not mqttEnabled:
-		    if tempSensor is not None:
-			    rawTemp = tempSensor.get_temperature( sensorUnits )
-			    correctedTemp = ( ( ( rawTemp - freezingMeasured ) * referenceRange ) / measuredRange ) + freezingPoint
-			    currentTemp = round( correctedTemp, 1 )
-			    log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/raw", str( rawTemp ) )
-			    log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/corrected", str( correctedTemp ) )
+            if tempSensor is not None:
+                try:
+			        rawTemp = tempSensor.get_temperature( sensorUnits )
+			        correctedTemp = ( ( ( rawTemp - freezingMeasured ) * referenceRange ) / measuredRange ) + freezingPoint
+			        currentTemp = round( correctedTemp, 1 )
+			        log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/raw", str( rawTemp ) )
+			        log( LOG_LEVEL_DEBUG, CHILD_DEVICE_TEMP, MSG_SUBTYPE_CUSTOM + "/corrected", str( correctedTemp ) )
 
-			    if abs( priorCorrected - correctedTemp ) >= TEMP_TOLERANCE:
-				    log( LOG_LEVEL_STATE, CHILD_DEVICE_TEMP, MSG_SUBTYPE_TEMPERATURE, str( currentTemp ) )	
-				    priorCorrected = correctedTemp	
-
+			        if abs( priorCorrected - correctedTemp ) >= TEMP_TOLERANCE:
+				        log( LOG_LEVEL_STATE, CHILD_DEVICE_TEMP, MSG_SUBTYPE_TEMPERATURE, str( currentTemp ) )	
+				        priorCorrected = correctedTemp	
+                except:
+                    currentTemp = currentTemp
+						
         currentLabel.text = "[b]" + str( currentTemp ) + scaleUnits + "[/b]"
         altCurLabel.text  = currentLabel.text
 
