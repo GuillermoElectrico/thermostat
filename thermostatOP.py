@@ -232,8 +232,11 @@ state 	 = JsonStore( "thermostat_state.json" )
 
 ############
 def on_message(client, userdata, message):
+    global currentTemp, mqttEnabled
+	
     if mqttEnabled:
-        currentTemp = int(str(message.payload.decode("utf-8")))
+        currentTemp  = float(message.payload.decode("utf-8"))
+    
 ########################################
 
 def mqtt_on_connect( client, userdata, flags, rc ):
@@ -267,7 +270,7 @@ if mqttAvailable:
 	mqttServer     		= 'localhost' 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "server" ]
 	mqttPort       		= 1883 			if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "port" ]
 	mqttPubPrefix     	= "mymqtt" 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
-	mqttSusbcribeTopic     	= str( mqttPubPrefix + "/" + mqttClientID + "/sensor/remote1" ) 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "pubPrefix" ]
+	mqttSusbcribeTopic     	= str( mqttPubPrefix + "/" + mqttClientID + "/sensor/remote1" ) 	if not( settings.exists( "mqtt" ) ) else settings.get( "mqtt" )[ "SusbcribeTopic" ]
 
 	mqttSub_version		= str( mqttPubPrefix + "/" + mqttClientID + "/command/version" )
 	mqttSub_restart		= str( mqttPubPrefix + "/" + mqttClientID + "/command/restart" )
@@ -373,6 +376,8 @@ if mqttEnabled:
 
 	mqttc.connect( mqttServer, mqttPort )
 	mqttc.subscribe( mqttSusbcribeTopic )
+	print( "MQTT subscribe to: " + mqttSusbcribeTopic )
+	mqttc.on_message=on_message        #attach function to callback
 	mqttc.loop_start()
 
 # Send presentations for Node

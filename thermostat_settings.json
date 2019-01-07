@@ -10,10 +10,10 @@
     },
     "mqtt": {
         "clientID": "thermostat",
-        "enabled": 0,
+        "enabled": 1,
         "port": 1883,
         "pubPrefix": "mymqtt",
-        "server": "localhost",
+        "server": "127.0.0.1",
         "SusbcribeTopic": "mymqtt/thermostat/sensor/remote1"
     },
     "pir": {
@@ -34,7 +34,7 @@
         "minTemp": 5.0,
         "minUIEnabled": 1,
         "minUITimeout": 60,
-        "tempCheckInterval": 3,
+        "tempCheckInterval": 10,
         "tempHysteresis": 0.5,
         "tempStep": 0.5
     },
